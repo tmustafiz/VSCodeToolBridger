@@ -1,0 +1,4 @@
+{
+    "toolsBridger.serverType": "streamable",
+    "toolsBridger.serverUrl": "http://localhost:8081/db-mcp-server/"
+} 

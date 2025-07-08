@@ -1,0 +1,457 @@
+{
+  "name": "vscode-tools-bridger",
+  "displayName": "VSCode Tools Bridger",
+  "description": "A VSCode extension that provides Language Model Tools to connect to PostgreSQL MCP servers",
+  "version": "0.0.1",
+  "publisher": "toolsbridger",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "language-model-tools",
+    "ai",
+    "tools",
+    "postgresql",
+    "database"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "PostgreSQL Tools Bridger",
+      "properties": {
+        "toolsBridger.serverType": {
+          "type": "string",
+          "enum": [
+            "streamable",
+            "sse",
+            "stdio"
+          ],
+          "default": "streamable",
+          "description": "Type of MCP server transport to use",
+          "enumDescriptions": [
+            "Streamable HTTP transport for modern MCP servers (recommended)",
+            "Server-Sent Events (SSE) transport for HTTP-based MCP servers (deprecated)",
+            "Standard I/O transport for local MCP server processes"
+          ]
+        },
+        "toolsBridger.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8081/db-mcp-server/",
+          "description": "URL of the PostgreSQL MCP server (used with Streamable HTTP and SSE transports)",
+          "pattern": "^https?://.*",
+          "patternErrorMessage": "Must be a valid HTTP or HTTPS URL",
+          "when": "config.toolsBridger.serverType != 'stdio'"
+        },
+        "toolsBridger.serverCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command to start the MCP server (used with stdio transport)",
+          "when": "config.toolsBridger.serverType == 'stdio'"
+        },
+        "toolsBridger.serverArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Arguments for the MCP server command (used with stdio transport)",
+          "when": "config.toolsBridger.serverType == 'stdio'"
+        },
+        "toolsBridger.fallbackModel": {
+          "type": "string",
+          "enum": ["gpt-4.1", "gpt-4o", "gpt-4o-mini", "auto"],
+          "default": "auto",
+          "description": "Preferred model to use when the selected model doesn't support tools",
+          "enumDescriptions": [
+            "Always use GPT-4.1 as fallback (best quality, superior coding)",
+            "Always use GPT-4o as fallback (good quality, multimodal)",
+            "Always use GPT-4o-mini as fallback (faster, good quality)",
+            "Automatically select the best available tool-capable model"
+          ]
+        }
+      }
+    },
+    "chatParticipants": [
+      {
+        "id": "database-tools-participant.dbTools",
+        "name": "dbTools",
+        "description": "PostgreSQL database tools participant for MCP server integration",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "list",
+            "description": "List available PostgreSQL database tools"
+          },
+          {
+            "name": "all",
+            "description": "Use all available PostgreSQL database tools"
+          }
+        ],
+        "disambiguation": [
+          {
+            "category": "database",
+            "description": "PostgreSQL database operations and queries",
+            "examples": [
+              "query the database",
+              "get table schema",
+              "execute SQL",
+              "generate ERD diagram",
+              "find related tables"
+            ]
+          }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "postgresql_listSchemas",
+        "tags": [
+          "postgresql",
+          "database",
+          "schema",
+          "database-tools"
+        ],
+        "toolReferenceName": "listSchemas",
+        "displayName": "List PostgreSQL Schemas",
+        "modelDescription": "List all available schemas in the PostgreSQL database, excluding system schemas",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(database)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_listTables",
+        "tags": [
+          "postgresql",
+          "database",
+          "tables",
+          "database-tools"
+        ],
+        "toolReferenceName": "listTables",
+        "displayName": "List PostgreSQL Tables",
+        "modelDescription": "List all tables in a PostgreSQL schema",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(list-tree)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema to list tables from (e.g., 'public')"
+            }
+          },
+          "required": [
+            "schema"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_listColumns",
+        "tags": [
+          "postgresql",
+          "database",
+          "columns",
+          "database-tools"
+        ],
+        "toolReferenceName": "listColumns",
+        "displayName": "List PostgreSQL Table Columns",
+        "modelDescription": "List columns for a PostgreSQL table with their types and nullable information",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(symbol-structure)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema containing the table"
+            },
+            "table": {
+              "type": "string",
+              "description": "The name of the table to list columns from"
+            }
+          },
+          "required": [
+            "schema",
+            "table"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_generateErdMermaid",
+        "tags": [
+          "postgresql",
+          "database",
+          "erd",
+          "diagram",
+          "database-tools"
+        ],
+        "toolReferenceName": "generateErdMermaid",
+        "displayName": "Generate PostgreSQL ERD (Mermaid)",
+        "modelDescription": "Generate a Mermaid Entity Relationship Diagram for a PostgreSQL schema",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(graph)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The schema to generate ERD diagram for"
+            }
+          },
+          "required": [
+            "schema"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_generateErdJson",
+        "tags": [
+          "postgresql",
+          "database",
+          "erd",
+          "json",
+          "database-tools"
+        ],
+        "toolReferenceName": "generateErdJson",
+        "displayName": "Generate PostgreSQL ERD (JSON)",
+        "modelDescription": "Generate Entity Relationship data as JSON for a PostgreSQL schema",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(json)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The schema to generate ERD JSON for"
+            }
+          },
+          "required": [
+            "schema"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_fuzzyColumnMatch",
+        "tags": [
+          "postgresql",
+          "database",
+          "search",
+          "columns",
+          "database-tools"
+        ],
+        "toolReferenceName": "fuzzyColumnMatch",
+        "displayName": "Find PostgreSQL Columns by Keyword",
+        "modelDescription": "Find the best matching column in a PostgreSQL table using fuzzy search and similarity matching",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(search)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema"
+            },
+            "table": {
+              "type": "string",
+              "description": "The name of the table"
+            },
+            "keyword": {
+              "type": "string",
+              "description": "The keyword to search for in column names"
+            }
+          },
+          "required": [
+            "schema",
+            "table",
+            "keyword"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_sampleColumnData",
+        "tags": [
+          "postgresql",
+          "database",
+          "data",
+          "sample",
+          "database-tools"
+        ],
+        "toolReferenceName": "sampleColumnData",
+        "displayName": "Sample PostgreSQL Column Data",
+        "modelDescription": "Get sample data values from a PostgreSQL column for data inspection",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(eye)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema"
+            },
+            "table": {
+              "type": "string",
+              "description": "The name of the table"
+            },
+            "column": {
+              "type": "string",
+              "description": "The name of the column to sample"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of sample values to return (default: 10)"
+            }
+          },
+          "required": [
+            "schema",
+            "table",
+            "column"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_findRelatedTables",
+        "tags": [
+          "postgresql",
+          "database",
+          "relationships",
+          "foreign-keys",
+          "database-tools"
+        ],
+        "toolReferenceName": "findRelatedTables",
+        "displayName": "Find Related PostgreSQL Tables",
+        "modelDescription": "Find related PostgreSQL tables using foreign key constraints",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(references)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema"
+            },
+            "table": {
+              "type": "string",
+              "description": "The name of the table to find relationships for"
+            }
+          },
+          "required": [
+            "schema",
+            "table"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_describeRelationship",
+        "tags": [
+          "postgresql",
+          "database",
+          "relationships",
+          "explain",
+          "database-tools"
+        ],
+        "toolReferenceName": "describeRelationship",
+        "displayName": "Describe PostgreSQL Table Relationship",
+        "modelDescription": "Describe the relationship between two PostgreSQL tables in plain English",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(link)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "The name of the schema"
+            },
+            "table1": {
+              "type": "string",
+              "description": "The name of the first table"
+            },
+            "table2": {
+              "type": "string",
+              "description": "The name of the second table"
+            }
+          },
+          "required": [
+            "schema",
+            "table1",
+            "table2"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "postgresql_runQuery",
+        "tags": [
+          "postgresql",
+          "database",
+          "sql",
+          "query",
+          "database-tools"
+        ],
+        "toolReferenceName": "runQuery",
+        "displayName": "Execute PostgreSQL Query",
+        "modelDescription": "Execute a SELECT query against the PostgreSQL database with safety measures",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(play)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The SELECT query to execute"
+            },
+            "clientId": {
+              "type": "string",
+              "description": "Unique identifier for rate limiting (auto-generated if not provided)",
+              "default": "vscode-tools-bridger"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:*",
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.95.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "@vscode/prompt-tsx": "^0.2.11-alpha",
+    "ws": "^8.18.0"
+  }
+}
