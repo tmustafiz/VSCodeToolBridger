@@ -418,7 +418,7 @@ export function registerAdaptiveToolsParticipant(context: vscode.ExtensionContex
 
 ${availableTools}
 
-IMPORTANT: When using tools, you must specify the exact tool name and participant ID. For most operations, use participantId: "toolsAgent". The system will automatically route tools to the correct participant based on the tool's domain.
+IMPORTANT: When using tools, you must specify the exact tool name and participant ID. For most operations, use participantId: "adaptive-tools-participant.toolsAgent". The system will automatically route tools to the correct participant based on the tool's domain.
 
 User request: ${request.prompt}`)
         ];

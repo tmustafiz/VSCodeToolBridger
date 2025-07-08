@@ -73,24 +73,38 @@ Add to your workspace `.vscode/settings.json`:
     {
       "id": "postgres",
       "label": "PostgreSQL Database",
+      "transport": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-postgres"],
       "env": {
         "POSTGRES_URL": "postgresql://user:password@localhost/dbname"
       },
-      "participantId": "database",
       "categories": ["database", "postgresql"]
     },
     {
       "id": "filesystem",
       "label": "File System Tools",
+      "transport": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem"],
       "env": {
         "FILESYSTEM_ROOT": "/path/to/your/files"
       },
-      "participantId": "filesystem",
       "categories": ["filesystem", "files"]
+    },
+    {
+      "id": "remote-api",
+      "label": "Remote API Server",
+      "transport": "streamable",
+      "url": "https://api.example.com/mcp",
+      "categories": ["api", "web", "remote"]
+    },
+    {
+      "id": "analytics-service",
+      "label": "Analytics Service",
+      "transport": "sse",
+      "url": "https://analytics.example.com/mcp/events",
+      "categories": ["analytics", "data", "streaming"]
     }
   ]
 }
@@ -101,6 +115,8 @@ Add to your workspace `.vscode/settings.json`:
 1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 2. Run **"Tools Bridger: Add MCP Server"**
 3. Follow the prompts to configure your server
+
+> **Note**: The command palette currently only supports stdio transport. For streamable/SSE configurations, use the settings.json method with the configuration ready for when these transports become available.
 
 ### Method 3: VS Code Settings UI
 
@@ -114,11 +130,34 @@ Each MCP server configuration supports:
 
 - `id` (required): Unique identifier for the server
 - `label` (required): Display name for the server
-- `command` (required): Command to start the server
-- `args` (optional): Command line arguments
-- `env` (optional): Environment variables
-- `participantId` (optional): Chat participant ID (defaults to "toolsAgent")
-- `categories` (optional): Tool categories for better organization
+- `transport` (required): Transport type - "stdio", "streamable", or "sse"
+- `command` (stdio only): Command to start the server process
+- `args` (optional): Command line arguments for stdio servers
+- `env` (optional): Environment variables for stdio servers
+- `url` (streamable/sse only): URL for HTTP-based MCP servers
+- `categories` (optional): Tool categories for better AI domain detection
+
+**Note**: All servers use the single adaptive chat participant `@toolsAgent` which intelligently adapts to your requests.
+
+### Transport Types
+
+#### **stdio** (✅ Currently Supported)
+- **Use case**: Local MCP servers running as processes
+- **Configuration**: Requires `command`, optionally `args` and `env`
+- **Example**: Node.js-based MCP servers, Python scripts, compiled binaries
+- **Benefits**: Full bidirectional communication, process lifecycle management
+
+#### **streamable** (🚧 Coming Soon)
+- **Use case**: Remote MCP servers over HTTP with streaming support
+- **Configuration**: Requires `url` (HTTP/HTTPS endpoint)
+- **Example**: Cloud-hosted MCP services, containerized remote servers
+- **Benefits**: Scalable, cloud-native, no local process management needed
+
+#### **sse** (🚧 Coming Soon)
+- **Use case**: Server-Sent Events for real-time streaming data
+- **Configuration**: Requires `url` (HTTP/HTTPS endpoint)
+- **Example**: Real-time analytics, live data feeds, event-driven services
+- **Benefits**: Real-time updates, efficient for streaming data scenarios
 
 ## Supported MCP Servers
 
@@ -133,7 +172,7 @@ The extension works with any MCP-compatible server. Popular options include:
 
 ## Domain Adaptation
 
-The extension automatically adapts to different domains based on your requests:
+The `@toolsAgent` participant automatically adapts to different domains based on your requests and available tools:
 
 - **Database**: Becomes a database expert when you ask about schemas, queries, or data
 - **File System**: Adapts to file operations when you mention files or directories
@@ -143,6 +182,8 @@ The extension automatically adapts to different domains based on your requests:
 - **Analysis**: Provides data analysis and reporting capabilities
 - **System**: Helps with system administration tasks
 - **Security**: Assists with security-related operations
+
+The single adaptive participant intelligently selects the right tools and adopts the appropriate expert persona based on your request context.
 
 ## Commands
 
@@ -224,6 +265,45 @@ For detailed troubleshooting:
 
 ## Examples and Use Cases
 
+### Configuration Examples by Transport Type
+
+#### **stdio Transport** (Local Servers)
+```json
+{
+  "id": "local-postgres",
+  "label": "Local PostgreSQL",
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-postgres"],
+  "env": {
+    "POSTGRES_URL": "postgresql://user:password@localhost/dbname"
+  },
+  "categories": ["database", "postgresql"]
+}
+```
+
+#### **streamable Transport** (Remote HTTP Servers)
+```json
+{
+  "id": "cloud-api",
+  "label": "Cloud API Service",
+  "transport": "streamable",
+  "url": "https://api.mycompany.com/mcp",
+  "categories": ["api", "cloud", "remote"]
+}
+```
+
+#### **sse Transport** (Real-time Streaming)
+```json
+{
+  "id": "live-analytics",
+  "label": "Live Analytics Feed",
+  "transport": "sse",
+  "url": "https://analytics.mycompany.com/mcp/stream",
+  "categories": ["analytics", "real-time", "streaming"]
+}
+```
+
 ### Database Operations
 
 ```
@@ -249,6 +329,15 @@ For detailed troubleshooting:
 @toolsAgent what branches are available?
 @toolsAgent show me uncommitted changes
 @toolsAgent who made the most commits this month?
+```
+
+### Remote API Operations (Coming Soon)
+
+```
+@toolsAgent fetch user data from the remote API
+@toolsAgent call the analytics endpoint for monthly reports
+@toolsAgent stream real-time events from the service
+@toolsAgent sync data between local and remote systems
 ```
 
 ### Mixed Domain Queries

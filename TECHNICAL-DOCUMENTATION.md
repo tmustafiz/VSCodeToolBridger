@@ -62,25 +62,45 @@ VSCodeToolBridger/
 interface McpServerConfig {
     id: string;
     label: string;
-    command: string;
+    transport: 'stdio' | 'streamable' | 'sse';
+    
+    // For stdio transport
+    command?: string;
     args?: string[];
     env?: Record<string, string>;
+    
+    // For HTTP-based transports (streamable/sse)
+    url?: string;
+    
+    // Internal use only - not exposed to user configuration
     participantId?: string;
     categories?: string[];
 }
 ```
 
 **Key Methods**:
-- `provideMcpServerDefinitions()`: Returns array of `vscode.McpServerDefinition` objects
+- `provideMcpServerDefinitions()`: Returns array of `vscode.McpServerDefinition` objects (currently stdio only)
 - `onDidChangeMcpServerDefinitions`: Event fired when server list changes
 - `addServer()`: Adds new MCP server configuration
 - `removeServer()`: Removes MCP server configuration
 - `loadServersFromConfig()`: Loads servers from workspace and global settings
 
+**Transport Support**:
+- **stdio**: Creates `McpStdioServerDefinition` instances
+- **streamable**: Framework ready, awaiting VSCode API support for `McpStreamableServerDefinition`
+- **sse**: Framework ready, awaiting VSCode API support for `McpSSEServerDefinition`
+
 **Configuration Sources**:
 1. **Workspace Settings**: `toolsBridger.mcpServers` configuration
 2. **Extension Global State**: User-added servers via commands
 3. **Default Configuration**: PostgreSQL server if none configured
+
+**Transport Support**:
+- **stdio** (✅ Currently Supported): Local MCP servers via process communication
+- **streamable** (🚧 Coming Soon): HTTP-based MCP servers with streaming support
+- **sse** (🚧 Coming Soon): Server-Sent Events for real-time streaming data
+
+**Note**: All MCP servers use the single adaptive participant `adaptive-tools-participant.toolsAgent` regardless of configuration.
 
 ### 2. Dynamic Tool Registry (`dynamicToolRegistry.ts`)
 
@@ -120,6 +140,8 @@ interface DynamicTool {
 2. **Query Proxy** (`tool_proxy_query`): Routes search and query operations
 3. **Analysis Proxy** (`tool_proxy_analysis`): Routes analysis and reporting operations
 4. **General Proxy** (`tool_proxy_general`): Routes general utility operations
+
+**Note**: Proxy tools are registered using the `name` field from package.json (e.g., `tool_proxy_database`) rather than `toolReferenceName` (e.g., `proxyDatabase`) to ensure proper VSCode tool discovery.
 
 **Execution Flow**:
 ```
@@ -322,17 +344,49 @@ The extension uses a hybrid approach for tool execution:
 ## Configuration Management
 
 ### Workspace Configuration
+
+#### stdio Transport (Currently Supported)
 ```json
 {
   "toolsBridger.mcpServers": [
     {
       "id": "my-server",
       "label": "My MCP Server",
+      "transport": "stdio",
       "command": "node",
       "args": ["server.js"],
       "env": {"KEY": "value"},
-      "participantId": "myTools",
       "categories": ["database", "analysis"]
+    }
+  ]
+}
+```
+
+#### streamable Transport (Coming Soon)
+```json
+{
+  "toolsBridger.mcpServers": [
+    {
+      "id": "remote-api",
+      "label": "Remote API Server",
+      "transport": "streamable",
+      "url": "https://api.example.com/mcp",
+      "categories": ["api", "web", "remote"]
+    }
+  ]
+}
+```
+
+#### sse Transport (Coming Soon)
+```json
+{
+  "toolsBridger.mcpServers": [
+    {
+      "id": "live-feed",
+      "label": "Live Data Feed",
+      "transport": "sse",
+      "url": "https://stream.example.com/mcp/events",
+      "categories": ["streaming", "real-time", "analytics"]
     }
   ]
 }
@@ -472,6 +526,86 @@ code --install-extension *.vsix
 - Add new tool categories
 - Implement custom execution logic
 
+## Current Implementation Status
+
+### Architecture Decisions
+
+#### Pure Single Participant Approach (Implemented)
+The extension currently implements a **Pure Single Participant** architecture where all MCP tools are accessed through a single adaptive chat participant (`@toolsAgent`). This design decision was made for:
+
+**Benefits**:
+- **Simplified User Experience**: Users only need to remember one participant ID
+- **Consistent Interface**: All tools accessible through the same interface
+- **Intelligent Adaptation**: Single participant adapts to different domains automatically
+- **Reduced Complexity**: Simpler configuration and management
+
+**Implementation Details**:
+- Participant ID: `adaptive-tools-participant.toolsAgent`
+- All MCP servers internally use this same participant ID
+- User configuration does not expose `participantId` field
+- Adaptive behavior based on tool categories and request analysis
+
+#### Transport Support Status
+- **stdio** (✅ **Fully Supported**): Local MCP servers via process communication
+- **streamable** (🚧 **Framework Ready**): HTTP-based servers - awaiting VSCode API support
+- **sse** (🚧 **Framework Ready**): Server-Sent Events - awaiting VSCode API support
+
+#### Configuration Management
+- **Workspace Settings**: Primary configuration source via `toolsBridger.mcpServers`
+- **Command Palette**: Simplified server addition (stdio only)
+- **Extension Global State**: Persistent user-added servers
+- **Default Configuration**: PostgreSQL server for immediate functionality
+
+#### Tool Registration Architecture
+- **Proxy Tools**: Four proxy tools registered with VSCode (`tool_proxy_database`, `tool_proxy_query`, `tool_proxy_analysis`, `tool_proxy_general`)
+- **Dynamic Discovery**: Runtime discovery of actual MCP tools
+- **Intelligent Routing**: Proxy tools route to appropriate MCP servers based on categories and tool names
+- **Graceful Degradation**: System functions even when MCP servers are unavailable
+
+### Known Limitations
+
+#### Transport Support
+- Only stdio transport currently functional due to VSCode API limitations
+- Streamable and SSE configurations accepted but not executable until VSCode adds API support
+- No authentication support for remote servers yet
+
+#### Participant Architecture
+- Single participant may not provide domain-specific expertise as effectively as specialized participants
+- No ability to create custom participants per project or domain
+- All tools appear under one participant regardless of server source
+
+#### Performance Constraints
+- Tool discovery happens at runtime, causing potential delays
+- No caching of tool definitions between sessions
+- Proxy tool routing adds overhead to tool execution
+
+#### Configuration Complexity
+- Transport configuration ready but not fully functional
+- No validation of remote server URLs or authentication
+- Limited error feedback for configuration issues
+
+### Recent Fixes and Improvements
+
+#### ParticipantId Consistency (Fixed)
+- **Issue**: Multiple different default participantId values across components
+- **Solution**: Standardized on `adaptive-tools-participant.toolsAgent` throughout codebase
+- **Impact**: Eliminated tool registration failures and "tool was not contributed" errors
+
+#### Proxy Tool Registration (Fixed)
+- **Issue**: Proxy tools registered with `toolReferenceName` instead of `name` from package.json
+- **Solution**: Updated registration to use proper tool names (`tool_proxy_database`, etc.)
+- **Impact**: Fixed tool discovery and execution routing
+
+#### Transport Architecture (Implemented)
+- **Addition**: Added transport field to `McpServerConfig` interface
+- **Framework**: Implemented transport-aware server definition creation
+- **Preparation**: Ready for future VSCode API enhancements
+
+#### Configuration Schema (Enhanced)
+- **Improvement**: Updated package.json with transport-aware configuration schema
+- **User Experience**: Better IntelliSense and validation in settings
+- **Documentation**: Clear indication of current vs. future transport support
+
 ## Contributing
 
 ### 1. Code Structure
@@ -491,30 +625,87 @@ code --install-extension *.vsix
 
 ## Future Enhancements
 
-### 1. Advanced Tool Discovery
-- Automatic tool categorization using ML
-- Intelligent tool recommendation
-- Dynamic tool composition
+### 1. HTTP Transport Support (High Priority)
+- **streamable Transport**: Implement HTTP-based MCP server support when VSCode API adds `McpStreamableServerDefinition`
+- **sse Transport**: Add Server-Sent Events support for real-time streaming MCP servers
+- **Authentication**: Add support for API keys, OAuth, and other authentication methods for remote servers
+- **Connection Management**: Implement connection pooling, retry logic, and health checks for remote servers
 
-### 2. Enhanced Adaptive Behavior
-- Learning from user interactions
-- Personalized response styles
-- Context-aware tool selection
+### 2. Multi-Participant Architecture (Optional)
+- **Dynamic Participant Creation**: Create specialized chat participants per domain (e.g., `@dbTools`, `@gitTools`, `@webTools`)
+- **Participant Specialization**: Domain-specific personas with expert knowledge and tool access
+- **User Choice**: Allow users to choose between single adaptive participant or multiple specialized participants
+- **Participant Management**: Commands to create, configure, and manage multiple participants
 
-### 3. Performance Optimization
-- Async tool discovery and execution
-- Efficient caching strategies
-- Optimized tool routing algorithms
+### 3. Advanced Tool Discovery
+- **Intelligent Categorization**: Use ML to automatically categorize tools based on descriptions and usage patterns
+- **Tool Recommendation**: Suggest relevant tools based on user context and project structure
+- **Dynamic Tool Composition**: Chain tools together for complex workflows
+- **Tool Dependencies**: Detect and manage tool dependencies and prerequisites
 
-### 4. Extended Protocol Support
-- Support for additional MCP protocol features
-- Enhanced security and authentication
-- Improved error handling and resilience
+### 4. Enhanced Adaptive Behavior
+- **Learning from Interactions**: Adapt responses based on user feedback and usage patterns
+- **Personalized Response Styles**: Customize communication style based on user preferences
+- **Context-Aware Selection**: Improve tool selection based on workspace context and file types
+- **Proactive Suggestions**: Suggest tools and actions based on detected patterns and needs
+
+### 5. Performance and Scalability
+- **Async Tool Discovery**: Implement parallel tool discovery for faster startup
+- **Intelligent Caching**: Cache tool definitions, server responses, and user preferences
+- **Optimized Routing**: Improve proxy tool routing algorithms for better performance
+- **Resource Management**: Better memory usage and connection lifecycle management
+
+### 6. Security and Reliability
+- **Enhanced Authentication**: Support for secure authentication with remote MCP servers
+- **Input Validation**: Comprehensive validation of user inputs and server responses
+- **Error Recovery**: Improved error handling with automatic retry and fallback mechanisms
+- **Audit Logging**: Comprehensive logging for debugging and security auditing
+
+### 7. Developer Experience
+- **Tool Development Kit**: SDK for creating custom MCP servers and tools
+- **Configuration Validation**: Real-time validation of server configurations with helpful error messages
+- **Debug Mode**: Enhanced debugging capabilities for tool development and troubleshooting
+- **Testing Framework**: Built-in testing tools for MCP server and tool validation
+
+### 8. Integration Enhancements
+- **VSCode Integration**: Deeper integration with VSCode features (file explorer, source control, etc.)
+- **Extension Ecosystem**: Support for other extensions to register MCP servers and tools
+- **Workspace Templates**: Predefined configurations for common development environments
+- **Cloud Integration**: Support for cloud-based MCP servers and services
 
 ## Conclusion
 
-The Adaptive Tools Bridger represents a sophisticated approach to dynamic tool integration in VSCode. By leveraging MCP server discovery, proxy tool routing, and adaptive participant behavior, it provides a flexible and extensible platform for tool integration that adapts to the user's needs and available capabilities.
+The Adaptive Tools Bridger represents a sophisticated approach to dynamic tool integration in VSCode, successfully implementing a Pure Single Participant architecture that simplifies the user experience while maintaining powerful adaptability. The current implementation demonstrates several key achievements:
 
-The architecture is designed for extensibility, maintainability, and performance, making it suitable for both simple tool integration scenarios and complex multi-domain workflows. The comprehensive error handling and configuration management ensure reliable operation in diverse environments.
+### Technical Achievements
+
+1. **Robust Architecture**: The extension successfully combines MCP server discovery, proxy tool routing, and adaptive participant behavior into a cohesive system that handles diverse tool types and domains.
+
+2. **User-Centric Design**: The Pure Single Participant approach eliminates complexity for users while maintaining intelligent domain adaptation through the `@toolsAgent` participant.
+
+3. **Future-Ready Framework**: The transport-aware architecture is prepared for HTTP-based MCP servers, enabling seamless expansion when VSCode API support becomes available.
+
+4. **Reliability**: Comprehensive error handling, graceful degradation, and robust configuration management ensure stable operation across various environments.
+
+### Current State
+
+The extension is production-ready with:
+- **Stable stdio transport** for local MCP servers
+- **Consistent tool registration** and execution
+- **Intelligent routing** through proxy tools
+- **Adaptive behavior** based on tool categories and user context
+- **Comprehensive configuration** management
+
+### Future Potential
+
+The architectural foundation enables exciting future enhancements:
+- **HTTP Transport Support**: Ready for streamable and SSE transports
+- **Multi-Participant Option**: Framework supports specialized participants if needed
+- **Enhanced Intelligence**: ML-based tool categorization and recommendation
+- **Cloud Integration**: Support for remote MCP services and authentication
+
+### Impact
+
+This extension demonstrates how thoughtful architecture can bridge complex protocols (MCP) with user-friendly interfaces, creating a system that grows with both user needs and ecosystem capabilities. The balance between immediate functionality and future extensibility makes it a solid foundation for the evolving landscape of AI-powered development tools.
 
 This technical documentation provides the foundation for understanding, maintaining, and extending the Adaptive Tools Bridger extension. For user-focused documentation, please refer to the README.md file. 

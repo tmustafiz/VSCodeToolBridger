@@ -77,6 +77,25 @@ function registerCommands(context: vscode.ExtensionContext) {
         
         if (!serverLabel) return;
         
+        const transport = await vscode.window.showQuickPick(
+            [
+                { label: 'stdio', description: 'Standard I/O (for local processes)' },
+                { label: 'streamable', description: 'HTTP Streamable (for remote servers) - Coming Soon' },
+                { label: 'sse', description: 'Server-Sent Events (for remote servers) - Coming Soon' }
+            ],
+            { 
+                placeHolder: 'Select transport type',
+                ignoreFocusOut: true
+            }
+        );
+        
+        if (!transport) return;
+        
+        if (transport.label !== 'stdio') {
+            vscode.window.showWarningMessage(`${transport.label} transport is not yet supported. Please use stdio for now.`);
+            return;
+        }
+        
         const serverCommand = await vscode.window.showInputBox({
             prompt: 'Enter server command',
             placeHolder: 'npx @modelcontextprotocol/server-example'
@@ -84,16 +103,21 @@ function registerCommands(context: vscode.ExtensionContext) {
         
         if (!serverCommand) return;
         
-        const participantId = await vscode.window.showInputBox({
-            prompt: 'Enter participant ID (optional)',
-            placeHolder: 'myTools'
+        // Optional: Ask for arguments
+        const serverArgs = await vscode.window.showInputBox({
+            prompt: 'Enter server arguments (optional, space-separated)',
+            placeHolder: '-y @modelcontextprotocol/server-postgres'
         });
+        
+        const args = serverArgs ? serverArgs.split(' ').filter(arg => arg.trim()) : undefined;
         
         serverDiscovery.addServer({
             id: serverId,
             label: serverLabel,
+            transport: 'stdio',
             command: serverCommand,
-            participantId: participantId || 'adaptive-tools-participant.toolsAgent'
+            args: args,
+            participantId: 'adaptive-tools-participant.toolsAgent'
         });
         
         vscode.window.showInformationMessage(`Added MCP server: ${serverLabel}`);

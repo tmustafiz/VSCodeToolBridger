@@ -102,7 +102,7 @@ export class DynamicToolRegistry {
                 const discoveredTool: DiscoveredTool = {
                     name: tool.name,
                     serverId: serverConfig.id,
-                    participantId: serverConfig.participantId || 'toolsAgent',
+                    participantId: serverConfig.participantId || 'adaptive-tools-participant.toolsAgent',
                     schema: tool.inputSchema || {},
                     description: tool.description,
                     category: this.categorizeTools(tool.name, serverConfig.categories),

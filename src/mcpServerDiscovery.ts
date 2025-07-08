@@ -3,9 +3,17 @@ import * as vscode from 'vscode';
 export interface McpServerConfig {
     id: string;
     label: string;
-    command: string;
+    transport: 'stdio' | 'streamable' | 'sse';
+    
+    // For stdio transport
+    command?: string;
     args?: string[];
     env?: Record<string, string>;
+    
+    // For HTTP-based transports (streamable/sse)
+    url?: string;
+    
+    // Internal use only - not exposed to user configuration
     participantId?: string;
     categories?: string[];
 }
@@ -29,12 +37,25 @@ export class McpServerDiscovery {
 
         for (const server of this.servers) {
             try {
+                // Currently VSCode only supports stdio transport
+                // TODO: Add support for streamable and SSE when VSCode API supports them
+                if (server.transport !== 'stdio') {
+                    console.warn(`Server ${server.id} uses ${server.transport} transport, but only stdio is currently supported by VSCode. Skipping.`);
+                    continue;
+                }
+                
+                if (!server.command) {
+                    console.error(`Server ${server.id} has stdio transport but no command specified`);
+                    continue;
+                }
+                
                 const definition = new vscode.McpStdioServerDefinition(
                     server.label,
                     server.command,
                     server.args || [],
                     server.env || {}
                 );
+                
                 definitions.push(definition);
             } catch (error) {
                 console.error(`Error creating server definition for ${server.id}:`, error);
@@ -120,6 +141,7 @@ export class McpServerDiscovery {
         const defaultServer: McpServerConfig = {
             id: 'default-postgres',
             label: 'PostgreSQL Database Tools',
+            transport: 'stdio',
             command: 'npx',
             args: ['-y', '@modelcontextprotocol/server-postgres'],
             env: {},

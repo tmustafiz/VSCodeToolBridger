@@ -116,40 +116,53 @@
                 "type": "string",
                 "description": "Display name for the MCP server"
               },
+              "transport": {
+                "type": "string",
+                "enum": ["stdio", "streamable", "sse"],
+                "default": "stdio",
+                "description": "Transport type for the MCP server",
+                "enumDescriptions": [
+                  "Standard I/O transport for local processes",
+                  "HTTP Streamable transport for remote servers (Coming Soon)",
+                  "Server-Sent Events transport for remote servers (Coming Soon)"
+                ]
+              },
               "command": {
                 "type": "string",
-                "description": "Command to start the MCP server"
+                "description": "Command to start the MCP server (required for stdio transport)"
               },
               "args": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Arguments for the MCP server command"
+                "description": "Arguments for the MCP server command (stdio transport only)"
               },
               "env": {
                 "type": "object",
                 "additionalProperties": {
                   "type": "string"
                 },
-                "description": "Environment variables for the MCP server"
+                "description": "Environment variables for the MCP server (stdio transport only)"
               },
-              "participantId": {
+              "url": {
                 "type": "string",
-                "description": "Chat participant ID to associate with this server's tools"
+                "description": "URL for the MCP server (required for streamable/sse transports)",
+                "pattern": "^https?://.*",
+                "patternErrorMessage": "Must be a valid HTTP or HTTPS URL"
               },
               "categories": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Categories for tools from this server"
+                "description": "Categories for tools from this server (helps with AI domain detection)"
               }
             },
-            "required": ["id", "label", "command"]
+            "required": ["id", "label", "transport"]
           },
           "default": [],
-          "description": "Configuration for MCP servers"
+          "description": "Configuration for MCP servers. All servers use the single adaptive chat participant @toolsAgent."
         }
       }
     },
