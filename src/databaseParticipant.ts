@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DatabaseToolCallRound, DatabaseToolMetadata } from './types';
-import { McpClient } from './mcpClient';
+import { DynamicToolRegistry } from './dynamicToolRegistry';
+import { ProxyToolHandlers } from './proxyToolHandlers';
 
 function isDatabaseToolMetadata(obj: unknown): obj is DatabaseToolMetadata {
     return !!obj &&
@@ -79,7 +80,7 @@ async function selectFallbackModel(): Promise<vscode.LanguageModelChat> {
     }
 }
 
-export function registerDatabaseToolsParticipant(context: vscode.ExtensionContext, mcpClient: McpClient) {
+export function registerDatabaseToolsParticipant(context: vscode.ExtensionContext, toolRegistry: DynamicToolRegistry, proxyHandlers: ProxyToolHandlers) {
     const handler: vscode.ChatRequestHandler = async (
         request: vscode.ChatRequest, 
         chatContext: vscode.ChatContext, 
@@ -87,18 +88,17 @@ export function registerDatabaseToolsParticipant(context: vscode.ExtensionContex
         token: vscode.CancellationToken
     ) => {
         if (request.command === 'list') {
-            // List the available database tools (static list)
-            const tools = vscode.lm.tools.filter(tool => tool.tags.includes('database-tools'));
+            // List the available database tools (dynamic list)
+            const tools = toolRegistry.getToolsForParticipant('dbTools');
             const toolNames = tools.map(tool => tool.name).join(', ');
             stream.markdown(`Available database tools: ${toolNames}\n\n`);
             
             // Show detailed information about each tool
             for (const tool of tools) {
                 stream.markdown(`### ${tool.name}\n`);
-                stream.markdown(`${tool.description}\n\n`);
-                if (tool.tags.length > 0) {
-                    stream.markdown(`**Tags:** ${tool.tags.join(', ')}\n\n`);
-                }
+                stream.markdown(`${tool.description || 'No description available'}\n\n`);
+                stream.markdown(`**Server:** ${tool.serverId}\n`);
+                stream.markdown(`**Category:** ${tool.category || 'general'}\n\n`);
             }
             
             return;
@@ -110,36 +110,32 @@ export function registerDatabaseToolsParticipant(context: vscode.ExtensionContex
             model = await selectFallbackModel();
         }
 
-        // Use all available tools or only database-specific tools
+        // Use all available proxy tools or only database-specific tools
         const tools = request.command === 'all' ?
             vscode.lm.tools :
-            vscode.lm.tools.filter(tool => tool.tags.includes('database-tools'));
+            vscode.lm.tools.filter(tool => tool.tags.includes('database') || tool.tags.includes('proxy'));
 
         const options: vscode.LanguageModelChatRequestOptions = {
             justification: 'To make a database request to @dbTools',
         };
 
         // Create initial messages
+        const availableTools = toolRegistry.getToolsForParticipant('dbTools');
+        const toolList = availableTools.map(tool => `- ${tool.name}: ${tool.description || 'No description'}`).join('\n');
+        
         const messages = [
-            vscode.LanguageModelChatMessage.User(`You are a PostgreSQL database assistant that helps users interact with their PostgreSQL database through specialized tools. 
-            You can execute SQL queries, inspect database schemas, get table information, generate ERD diagrams, find column matches, and perform other PostgreSQL database operations.
+            vscode.LanguageModelChatMessage.User(`You are a database assistant that helps users interact with their databases through dynamically discovered tools from MCP (Model Context Protocol) servers.
+            You can execute queries, inspect database schemas, get table information, generate diagrams, and perform other database operations based on the available tools.
             Always prioritize data safety and security. For destructive operations (DELETE, DROP, etc.), ask for confirmation.
             When querying data, consider using LIMIT clauses for large result sets unless specifically asked for all data.
             If you need to understand the database structure before answering a question, use the schema inspection tools first.
             Format query results in a clear, readable way. Use tables or lists as appropriate.
             If an error occurs, explain what went wrong and suggest possible solutions.
             Don't make assumptions about database structure - explore first if needed.
-            Always use the available PostgreSQL tools to interact with the database rather than providing hypothetical responses.
+            Always use the available tools to interact with the database rather than providing hypothetical responses.
             
-            Available PostgreSQL tools include:
-            - List schemas and tables
-            - Get column information with types
-            - Generate ERD diagrams (Mermaid and JSON)
-            - Find columns by keyword with fuzzy matching
-            - Sample column data for inspection
-            - Find related tables via foreign keys
-            - Describe relationships between tables
-            - Execute SELECT queries safely
+            Available tools from connected MCP servers:
+            ${toolList}
             
             User request: ${request.prompt}`)
         ];

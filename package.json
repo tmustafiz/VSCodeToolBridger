@@ -1,8 +1,8 @@
 {
-  "name": "vscode-tools-bridger",
-  "displayName": "VSCode Tools Bridger",
-  "description": "A VSCode extension that provides Language Model Tools to connect to PostgreSQL MCP servers",
-  "version": "0.0.1",
+  "name": "vscode-adaptive-tools-bridger",
+  "displayName": "Adaptive Tools Bridger",
+  "description": "Intelligent VSCode extension that dynamically adapts to any MCP servers, providing context-aware assistance across multiple domains (database, git, file-system, web, and more)",
+  "version": "0.1.0",
   "publisher": "toolsbridger",
   "license": "MIT",
   "repository": {
@@ -21,14 +21,37 @@
     "model-context-protocol",
     "language-model-tools",
     "ai",
+    "adaptive",
+    "dynamic",
     "tools",
-    "postgresql",
-    "database"
+    "database",
+    "git",
+    "file-system",
+    "multi-domain",
+    "context-aware",
+    "intelligent-assistant"
   ],
   "main": "./out/extension.js",
-  "contributes": {
-    "configuration": {
-      "title": "PostgreSQL Tools Bridger",
+      "contributes": {
+      "commands": [
+        {
+          "command": "toolsBridger.addMcpServer",
+          "title": "Add MCP Server",
+          "category": "Tools Bridger"
+        },
+        {
+          "command": "toolsBridger.removeMcpServer",
+          "title": "Remove MCP Server", 
+          "category": "Tools Bridger"
+        },
+        {
+          "command": "toolsBridger.listTools",
+          "title": "List Available Tools",
+          "category": "Tools Bridger"
+        }
+      ],
+      "configuration": {
+      "title": "Adaptive Tools Bridger",
       "properties": {
         "toolsBridger.serverType": {
           "type": "string",
@@ -47,8 +70,8 @@
         },
         "toolsBridger.serverUrl": {
           "type": "string",
-          "default": "http://localhost:8081/db-mcp-server/",
-          "description": "URL of the PostgreSQL MCP server (used with Streamable HTTP and SSE transports)",
+          "default": "http://localhost:8081/mcp-server/",
+          "description": "URL of the MCP server (used with Streamable HTTP and SSE transports)",
           "pattern": "^https?://.*",
           "patternErrorMessage": "Must be a valid HTTP or HTTPS URL",
           "when": "config.toolsBridger.serverType != 'stdio'"
@@ -79,35 +102,113 @@
             "Always use GPT-4o-mini as fallback (faster, good quality)",
             "Automatically select the best available tool-capable model"
           ]
+        },
+        "toolsBridger.mcpServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for the MCP server"
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name for the MCP server"
+              },
+              "command": {
+                "type": "string",
+                "description": "Command to start the MCP server"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments for the MCP server command"
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Environment variables for the MCP server"
+              },
+              "participantId": {
+                "type": "string",
+                "description": "Chat participant ID to associate with this server's tools"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Categories for tools from this server"
+              }
+            },
+            "required": ["id", "label", "command"]
+          },
+          "default": [],
+          "description": "Configuration for MCP servers"
         }
       }
     },
     "chatParticipants": [
       {
-        "id": "database-tools-participant.dbTools",
-        "name": "dbTools",
-        "description": "PostgreSQL database tools participant for MCP server integration",
+        "id": "adaptive-tools-participant.toolsAgent",
+        "name": "toolsAgent",
+        "description": "Adaptive assistant that dynamically uses available MCP tools for various tasks",
         "isSticky": true,
         "commands": [
           {
             "name": "list",
-            "description": "List available PostgreSQL database tools"
+            "description": "List all available tools from connected MCP servers"
           },
           {
-            "name": "all",
-            "description": "Use all available PostgreSQL database tools"
+            "name": "capabilities",
+            "description": "Show current capabilities based on available tools"
+          },
+          {
+            "name": "servers",
+            "description": "List connected MCP servers and their tools"
           }
         ],
         "disambiguation": [
           {
             "category": "database",
-            "description": "PostgreSQL database operations and queries",
+            "description": "Database operations and queries",
             "examples": [
               "query the database",
               "get table schema",
               "execute SQL",
-              "generate ERD diagram",
-              "find related tables"
+              "generate ERD diagram"
+            ]
+          },
+          {
+            "category": "development",
+            "description": "Development and version control operations",
+            "examples": [
+              "check git status",
+              "review code changes",
+              "manage repositories"
+            ]
+          },
+          {
+            "category": "file-system",
+            "description": "File system operations",
+            "examples": [
+              "search files",
+              "read file contents",
+              "manage directories"
+            ]
+          },
+          {
+            "category": "general",
+            "description": "General utility operations",
+            "examples": [
+              "process data",
+              "analyze information",
+              "perform calculations"
             ]
           }
         ]
@@ -115,327 +216,169 @@
     ],
     "languageModelTools": [
       {
-        "name": "postgresql_listSchemas",
+        "name": "tool_proxy_database",
         "tags": [
-          "postgresql",
+          "mcp",
           "database",
-          "schema",
-          "database-tools"
+          "proxy",
+          "dynamic"
         ],
-        "toolReferenceName": "listSchemas",
-        "displayName": "List PostgreSQL Schemas",
-        "modelDescription": "List all available schemas in the PostgreSQL database, excluding system schemas",
+        "toolReferenceName": "proxyDatabase",
+        "displayName": "Database Tool Proxy",
+        "modelDescription": "Proxy tool for executing database-related MCP tools from connected servers",
         "canBeReferencedInPrompt": true,
         "icon": "$(database)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_listTables",
-        "tags": [
-          "postgresql",
-          "database",
-          "tables",
-          "database-tools"
-        ],
-        "toolReferenceName": "listTables",
-        "displayName": "List PostgreSQL Tables",
-        "modelDescription": "List all tables in a PostgreSQL schema",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(list-tree)",
+        "when": "chatLocation == 'panel'",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "schema": {
+            "toolName": {
               "type": "string",
-              "description": "The name of the schema to list tables from (e.g., 'public')"
-            }
-          },
-          "required": [
-            "schema"
-          ],
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_listColumns",
-        "tags": [
-          "postgresql",
-          "database",
-          "columns",
-          "database-tools"
-        ],
-        "toolReferenceName": "listColumns",
-        "displayName": "List PostgreSQL Table Columns",
-        "modelDescription": "List columns for a PostgreSQL table with their types and nullable information",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(symbol-structure)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "The name of the schema containing the table"
+              "description": "The name of the MCP tool to execute"
             },
-            "table": {
+            "participantId": {
               "type": "string",
-              "description": "The name of the table to list columns from"
+              "description": "The chat participant ID (e.g., 'dbTools', 'postgres')"
+            },
+            "arguments": {
+              "type": "object",
+              "description": "Arguments to pass to the MCP tool",
+              "additionalProperties": true
             }
           },
           "required": [
-            "schema",
-            "table"
+            "toolName",
+            "participantId"
           ],
           "additionalProperties": false
         }
       },
       {
-        "name": "postgresql_generateErdMermaid",
+        "name": "tool_proxy_query",
         "tags": [
-          "postgresql",
-          "database",
-          "erd",
-          "diagram",
-          "database-tools"
-        ],
-        "toolReferenceName": "generateErdMermaid",
-        "displayName": "Generate PostgreSQL ERD (Mermaid)",
-        "modelDescription": "Generate a Mermaid Entity Relationship Diagram for a PostgreSQL schema",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(graph)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "The schema to generate ERD diagram for"
-            }
-          },
-          "required": [
-            "schema"
-          ],
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_generateErdJson",
-        "tags": [
-          "postgresql",
-          "database",
-          "erd",
-          "json",
-          "database-tools"
-        ],
-        "toolReferenceName": "generateErdJson",
-        "displayName": "Generate PostgreSQL ERD (JSON)",
-        "modelDescription": "Generate Entity Relationship data as JSON for a PostgreSQL schema",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(json)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "The schema to generate ERD JSON for"
-            }
-          },
-          "required": [
-            "schema"
-          ],
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_fuzzyColumnMatch",
-        "tags": [
-          "postgresql",
-          "database",
+          "mcp",
+          "query",
           "search",
-          "columns",
-          "database-tools"
+          "proxy",
+          "dynamic"
         ],
-        "toolReferenceName": "fuzzyColumnMatch",
-        "displayName": "Find PostgreSQL Columns by Keyword",
-        "modelDescription": "Find the best matching column in a PostgreSQL table using fuzzy search and similarity matching",
+        "toolReferenceName": "proxyQuery",
+        "displayName": "Query Tool Proxy",
+        "modelDescription": "Proxy tool for executing query and search-related MCP tools from connected servers",
         "canBeReferencedInPrompt": true,
         "icon": "$(search)",
+        "when": "chatLocation == 'panel'",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "schema": {
+            "toolName": {
               "type": "string",
-              "description": "The name of the schema"
+              "description": "The name of the MCP tool to execute"
             },
-            "table": {
+            "participantId": {
               "type": "string",
-              "description": "The name of the table"
+              "description": "The chat participant ID (e.g., 'dbTools', 'fileSearch')"
             },
-            "keyword": {
-              "type": "string",
-              "description": "The keyword to search for in column names"
+            "arguments": {
+              "type": "object",
+              "description": "Arguments to pass to the MCP tool",
+              "additionalProperties": true
             }
           },
           "required": [
-            "schema",
-            "table",
-            "keyword"
+            "toolName",
+            "participantId"
           ],
           "additionalProperties": false
         }
       },
       {
-        "name": "postgresql_sampleColumnData",
+        "name": "tool_proxy_analysis",
         "tags": [
-          "postgresql",
-          "database",
-          "data",
-          "sample",
-          "database-tools"
+          "mcp",
+          "analysis",
+          "generation",
+          "proxy",
+          "dynamic"
         ],
-        "toolReferenceName": "sampleColumnData",
-        "displayName": "Sample PostgreSQL Column Data",
-        "modelDescription": "Get sample data values from a PostgreSQL column for data inspection",
+        "toolReferenceName": "proxyAnalysis",
+        "displayName": "Analysis Tool Proxy",
+        "modelDescription": "Proxy tool for executing analysis and generation-related MCP tools from connected servers",
         "canBeReferencedInPrompt": true,
-        "icon": "$(eye)",
+        "icon": "$(graph)",
+        "when": "chatLocation == 'panel'",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "schema": {
+            "toolName": {
               "type": "string",
-              "description": "The name of the schema"
+              "description": "The name of the MCP tool to execute"
             },
-            "table": {
+            "participantId": {
               "type": "string",
-              "description": "The name of the table"
+              "description": "The chat participant ID (e.g., 'dbTools', 'dataAnalysis')"
             },
-            "column": {
-              "type": "string",
-              "description": "The name of the column to sample"
-            },
-            "limit": {
-              "type": "number",
-              "description": "Maximum number of sample values to return (default: 10)"
+            "arguments": {
+              "type": "object",
+              "description": "Arguments to pass to the MCP tool",
+              "additionalProperties": true
             }
           },
           "required": [
-            "schema",
-            "table",
-            "column"
+            "toolName",
+            "participantId"
           ],
           "additionalProperties": false
         }
       },
       {
-        "name": "postgresql_findRelatedTables",
+        "name": "tool_proxy_general",
         "tags": [
-          "postgresql",
-          "database",
-          "relationships",
-          "foreign-keys",
-          "database-tools"
+          "mcp",
+          "general",
+          "utility",
+          "proxy",
+          "dynamic"
         ],
-        "toolReferenceName": "findRelatedTables",
-        "displayName": "Find Related PostgreSQL Tables",
-        "modelDescription": "Find related PostgreSQL tables using foreign key constraints",
+        "toolReferenceName": "proxyGeneral",
+        "displayName": "General Tool Proxy",
+        "modelDescription": "Proxy tool for executing general-purpose MCP tools from connected servers",
         "canBeReferencedInPrompt": true,
-        "icon": "$(references)",
+        "icon": "$(tools)",
+        "when": "chatLocation == 'panel'",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "schema": {
+            "toolName": {
               "type": "string",
-              "description": "The name of the schema"
+              "description": "The name of the MCP tool to execute"
             },
-            "table": {
+            "participantId": {
               "type": "string",
-              "description": "The name of the table to find relationships for"
+              "description": "The chat participant ID (e.g., 'utilities', 'fileSystem')"
+            },
+            "arguments": {
+              "type": "object",
+              "description": "Arguments to pass to the MCP tool",
+              "additionalProperties": true
             }
           },
           "required": [
-            "schema",
-            "table"
-          ],
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_describeRelationship",
-        "tags": [
-          "postgresql",
-          "database",
-          "relationships",
-          "explain",
-          "database-tools"
-        ],
-        "toolReferenceName": "describeRelationship",
-        "displayName": "Describe PostgreSQL Table Relationship",
-        "modelDescription": "Describe the relationship between two PostgreSQL tables in plain English",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(link)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "The name of the schema"
-            },
-            "table1": {
-              "type": "string",
-              "description": "The name of the first table"
-            },
-            "table2": {
-              "type": "string",
-              "description": "The name of the second table"
-            }
-          },
-          "required": [
-            "schema",
-            "table1",
-            "table2"
-          ],
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "postgresql_runQuery",
-        "tags": [
-          "postgresql",
-          "database",
-          "sql",
-          "query",
-          "database-tools"
-        ],
-        "toolReferenceName": "runQuery",
-        "displayName": "Execute PostgreSQL Query",
-        "modelDescription": "Execute a SELECT query against the PostgreSQL database with safety measures",
-        "canBeReferencedInPrompt": true,
-        "icon": "$(play)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "The SELECT query to execute"
-            },
-            "clientId": {
-              "type": "string",
-              "description": "Unique identifier for rate limiting (auto-generated if not provided)",
-              "default": "vscode-tools-bridger"
-            }
-          },
-          "required": [
-            "query"
+            "toolName",
+            "participantId"
           ],
           "additionalProperties": false
         }
       }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "toolsBridger",
+        "label": "Dynamic MCP server discovery for adaptive tools bridger"
+      }
     ]
   },
   "activationEvents": [
-    "onLanguage:*",
     "onStartupFinished"
   ],
   "scripts": {

@@ -1,238 +1,331 @@
-# VSCode PostgreSQL Tools Bridger
+# Adaptive Tools Bridger for VSCode
 
-A Visual Studio Code extension that provides a Chat Participant for PostgreSQL database operations through MCP (Model Context Protocol) servers. This extension allows developers to interact with PostgreSQL databases through natural language using VSCode's Chat interface.
+An intelligent VSCode extension that provides dynamic MCP (Model Context Protocol) server integration and adaptive chat participants that automatically adjust their expertise based on available tools and user requests.
 
 ## Features
 
-- **PostgreSQL Chat Participant**: `@dbTools` participant for natural language PostgreSQL database interactions
-- **MCP Server Integration**: Connects to PostgreSQL MCP servers using SSE transport
-- **10 PostgreSQL Tools**: Comprehensive set of PostgreSQL database tools
-- **Safety Features**: Confirmation prompts for destructive database operations
-- **Rich Result Formatting**: Query results formatted as markdown tables for easy reading
-- **ERD Generation**: Create Mermaid diagrams and JSON representations of database schemas
+- **Dynamic MCP Server Discovery**: Automatically discover and connect to MCP servers
+- **Adaptive Chat Participant**: Intelligent assistant that adapts its persona based on available tools
+- **Multi-Domain Support**: Handles database, file system, git, web, development, and analysis domains
+- **Flexible Configuration**: Configure servers via workspace settings or commands
+- **Zero Configuration**: Works out of the box with sensible defaults
+- **Real-time Updates**: Add/remove servers without restarting VSCode
 
 ## Installation
 
-1. Clone this repository
-2. Run `npm install` to install dependencies
-3. Run `npm run compile` to compile the TypeScript code
-4. Open the project in VSCode
-5. Press `F5` to run the extension in a new Extension Development Host window
+### From VSIX Package
 
-## Configuration
+1. Download the latest `vscode-adaptive-tools-bridger-*.vsix` file
+2. Install via command line:
+   ```bash
+   code --install-extension vscode-adaptive-tools-bridger-*.vsix
+   ```
+3. Or install via VSCode:
+   - Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+   - Run "Extensions: Install from VSIX..."
+   - Select the downloaded `.vsix` file
 
-The extension can be configured through VSCode's Settings UI or through workspace settings. The following settings are available:
+### From Source
 
-### Basic Settings
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the extension: `npm run compile`
+4. Package the extension: `npm run package`
+5. Install the generated `.vsix` file
 
-- **`toolsBridger.serverType`**: MCP server transport type
-  - `streamable` (default) - Streamable HTTP transport for modern MCP servers (recommended)
-  - `sse` - Server-Sent Events (SSE) transport for HTTP-based MCP servers (deprecated)
-  - `stdio` - Standard I/O transport for local MCP server processes
+## Quick Start
 
-- **`toolsBridger.serverUrl`**: URL of the PostgreSQL MCP server (http://localhost:8081/db-mcp-server/)
-- **`toolsBridger.serverCommand`**: Command to start the MCP server (stdio only)
-- **`toolsBridger.serverArgs`**: Arguments for the MCP server command (stdio only)
-- **`toolsBridger.fallbackModel`**: Preferred model when selected model doesn't support tools
-  - `auto` (default) - Automatically select the best available tool-capable model
-  - `gpt-4.1` - Always use GPT-4.1 as fallback (best quality, superior coding)
-  - `gpt-4o` - Always use GPT-4o as fallback (good quality, multimodal)
-  - `gpt-4o-mini` - Always use GPT-4o-mini as fallback (faster, good quality)
-
-### Configuration Methods
-
-#### Method 1: VSCode Settings UI (Recommended)
-1. Open VSCode Settings (`Cmd/Ctrl + ,`)
-2. Search for "PostgreSQL Tools Bridger"
-3. Configure the MCP server connection settings
-
-#### Method 2: Workspace Settings (`.vscode/settings.json`)
-For Streamable HTTP transport with PostgreSQL MCP server (recommended):
-```json
-{
-  "toolsBridger.serverType": "streamable",
-  "toolsBridger.serverUrl": "http://localhost:8081/db-mcp-server/"
-}
-```
-
-For legacy SSE transport:
-```json
-{
-  "toolsBridger.serverType": "sse",
-  "toolsBridger.serverUrl": "http://localhost:8081/db-mcp-server/"
-}
-```
-
-For stdio transport with local MCP server:
-```json
-{
-  "toolsBridger.serverType": "stdio",
-  "toolsBridger.serverCommand": "python3",
-  "toolsBridger.serverArgs": ["path/to/your/mcp-server.py"]
-}
-```
-
-## Supported Models
-
-This extension works with all GitHub Copilot models that support tool calling. The following models are recommended and tested:
-
-### ✅ **Supported Models (with tool calling)**
-- **GPT-4.1** - Latest model with superior coding capabilities and 1M token context (when available)
-- **GPT-4o** - Recommended for multimodal tasks and general performance
-- **GPT-4o-mini** - Recommended for fast interactions
-- **Claude 3.5 Sonnet** - Excellent for complex reasoning tasks
-
-### ❌ **Not Supported (no tool calling)**
-- **o1-preview** - Reasoning model without tool support
-- **o1-mini** - Compact reasoning model without tool support
-
-**Note**: The extension automatically detects o1 models and falls back to a tool-capable model to ensure tool functionality works correctly. You can configure your preferred fallback model in the settings.
-
-### How Model Selection Works
-
-1. **User Selection**: You choose models through VSCode's native chat interface model picker (not through extension settings)
-2. **Automatic Fallback**: If you select a model that doesn't support tools (like o1 models), the extension automatically falls back to your configured fallback model
-3. **Fallback Priority**: When set to "auto", the extension tries models in this order:
-   - GPT-4.1 (best quality, superior coding)
-   - GPT-4o (good quality, multimodal)
-   - GPT-4o-mini (faster, good quality)
-   - GPT-4 (legacy)
-   - GPT-3.5-turbo (legacy)
+1. **Install the extension** as described above
+2. **Open VSCode** - the extension will automatically activate
+3. **Open a chat** and type `@toolsAgent` to start using the adaptive assistant
+4. **First time setup**: If no MCP servers are configured, it will default to PostgreSQL tools
 
 ## Usage
 
-1. Configure your PostgreSQL MCP server settings in `.vscode/settings.json`
-2. Ensure your PostgreSQL MCP server is running at the configured URL
-3. Open a chat session in VSCode
-4. Select your preferred supported model from the model picker
-5. Use the `@dbTools` participant for PostgreSQL database operations
-
 ### Chat Commands
 
-- `@dbTools /list` - List all available PostgreSQL database tools
-- `@dbTools /all` - Enable all available PostgreSQL database tools for the conversation
-- `@dbTools query the users table` - Natural language PostgreSQL database interactions
+Use the `@toolsAgent` chat participant with these commands:
 
-### Example Interactions
+- `@toolsAgent list` - Show available tools by domain
+- `@toolsAgent capabilities` - Display current capabilities
+- `@toolsAgent servers` - List connected MCP servers
+- `@toolsAgent <your question>` - Ask any question (the assistant will adapt to the appropriate domain)
 
-```
-@dbTools show me all schemas in the database
-@dbTools list tables in the public schema
-@dbTools what columns are in the users table?
-@dbTools generate an ERD diagram for the public schema
-@dbTools find columns related to "email" in the users table
-@dbTools get sample data from the users table email column
-@dbTools find tables related to the users table
-@dbTools execute SELECT * FROM users LIMIT 10
-```
-
-## Available PostgreSQL Tools
-
-The extension provides these 10 PostgreSQL-specific tools that work with PostgreSQL MCP servers:
-
-- **List Schemas** (`postgresql_listSchemas`) - List all available schemas, excluding system schemas
-- **List Tables** (`postgresql_listTables`) - List all tables in a specific schema
-- **List Columns** (`postgresql_listColumns`) - Get column information with types and nullable status
-- **Generate ERD (Mermaid)** (`postgresql_generateErdMermaid`) - Create Mermaid Entity Relationship Diagrams
-- **Generate ERD (JSON)** (`postgresql_generateErdJson`) - Generate ERD data as JSON
-- **Fuzzy Column Match** (`postgresql_fuzzyColumnMatch`) - Find columns by keyword with similarity matching
-- **Sample Column Data** (`postgresql_sampleColumnData`) - Get sample data from specific columns
-- **Find Related Tables** (`postgresql_findRelatedTables`) - Find tables related through foreign keys
-- **Describe Relationship** (`postgresql_describeRelationship`) - Explain relationships between tables
-- **Execute Query** (`postgresql_runQuery`) - Run SELECT queries with safety measures
-
-Each tool provides:
-
-- **Parameter validation** based on TypeScript interfaces
-- **Safety confirmations** for destructive operations
-- **Rich result formatting** with markdown tables and diagrams
-- **Error handling** with helpful error messages
-
-## Project Structure
+### Examples
 
 ```
-src/
-├── extension.ts              # Main extension entry point
-├── mcpClient.ts             # MCP client for PostgreSQL server communication
-├── databaseParticipant.ts   # PostgreSQL chat participant implementation
-├── types.ts                 # TypeScript interfaces and types
-└── tools/                   # PostgreSQL tools implementation
-    ├── index.ts             # Tools export index
-    └── postgresqlTools.ts   # All 10 PostgreSQL tool implementations
+@toolsAgent list databases in the system
+@toolsAgent analyze the user table structure
+@toolsAgent help me with git operations
+@toolsAgent search for files containing "config"
+@toolsAgent what development tools are available?
 ```
 
-## Development
+## Configuration
 
-### Building
+### Method 1: Workspace Settings (Recommended)
 
-```bash
-npm install
-npm run compile
-```
+Add to your workspace `.vscode/settings.json`:
 
-### Code Quality
-
-This project uses ESLint with modern flat config (`eslint.config.mjs`) following [VSCode extension best practices](https://github.com/microsoft/vscode-extension-samples). Run linting with:
-
-```bash
-npm run lint
-```
-
-### Architecture Overview
-
-This extension follows the **chat-tools-sample pattern** with these key components:
-
-1. **PostgreSQL Chat Participant** (`databaseParticipant.ts`) - Handles chat interactions and tool orchestration
-2. **PostgreSQL Tools** (`tools/postgresqlTools.ts`) - 10 specialized PostgreSQL tools
-3. **Type System** (`types.ts`) - Provides TypeScript interfaces for all PostgreSQL tool parameters
-4. **MCP Client** (`mcpClient.ts`) - Manages SSE connections to PostgreSQL MCP servers
-
-### Adding Custom Tools
-
-1. Create a new tool file in `src/tools/` (e.g., `src/tools/customTool.ts`)
-2. Implement the `vscode.LanguageModelTool<YourInterface>` interface with proper TypeScript interface
-3. Export the tool class from `src/tools/index.ts`
-4. Register the tool in `src/extension.ts` and add it to `package.json` languageModelTools section
-
-### Tool Development Pattern
-
-```typescript
-// Define parameter interface
-interface MyToolParams {
-  required_param: string;
-  optional_param?: number;
-}
-
-// Implement tool class
-export class MyTool implements vscode.LanguageModelTool<MyToolParams> {
-  constructor(private mcpClient: McpClient) {}
-  
-  async invoke(options: vscode.LanguageModelToolInvocationOptions<MyToolParams>, token: vscode.CancellationToken) {
-    // Implementation with type safety
-  }
+```json
+{
+  "toolsBridger.mcpServers": [
+    {
+      "id": "postgres",
+      "label": "PostgreSQL Database",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://user:password@localhost/dbname"
+      },
+      "participantId": "database",
+      "categories": ["database", "postgresql"]
+    },
+    {
+      "id": "filesystem",
+      "label": "File System Tools",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "FILESYSTEM_ROOT": "/path/to/your/files"
+      },
+      "participantId": "filesystem",
+      "categories": ["filesystem", "files"]
+    }
+  ]
 }
 ```
 
-### Testing
+### Method 2: Command Palette
 
-```bash
-npm run test
+1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run **"Tools Bridger: Add MCP Server"**
+3. Follow the prompts to configure your server
+
+### Method 3: VS Code Settings UI
+
+1. Open Settings (`Ctrl+,` / `Cmd+,`)
+2. Search for "Tools Bridger"
+3. Configure MCP servers in the UI
+
+## Configuration Options
+
+Each MCP server configuration supports:
+
+- `id` (required): Unique identifier for the server
+- `label` (required): Display name for the server
+- `command` (required): Command to start the server
+- `args` (optional): Command line arguments
+- `env` (optional): Environment variables
+- `participantId` (optional): Chat participant ID (defaults to "toolsAgent")
+- `categories` (optional): Tool categories for better organization
+
+## Supported MCP Servers
+
+The extension works with any MCP-compatible server. Popular options include:
+
+- **@modelcontextprotocol/server-postgres** - PostgreSQL database operations
+- **@modelcontextprotocol/server-filesystem** - File system operations
+- **@modelcontextprotocol/server-git** - Git version control operations
+- **@modelcontextprotocol/server-web** - Web scraping and HTTP requests
+- **@modelcontextprotocol/server-memory** - Memory and note-taking
+- **@modelcontextprotocol/server-docker** - Docker container management
+
+## Domain Adaptation
+
+The extension automatically adapts to different domains based on your requests:
+
+- **Database**: Becomes a database expert when you ask about schemas, queries, or data
+- **File System**: Adapts to file operations when you mention files or directories
+- **Git**: Becomes a git expert for version control questions
+- **Web**: Handles web scraping and HTTP requests
+- **Development**: Assists with code analysis and development tools
+- **Analysis**: Provides data analysis and reporting capabilities
+- **System**: Helps with system administration tasks
+- **Security**: Assists with security-related operations
+
+## Commands
+
+Available commands in the Command Palette:
+
+- **Tools Bridger: Add MCP Server** - Add a new MCP server
+- **Tools Bridger: Remove MCP Server** - Remove an existing MCP server
+- **Tools Bridger: List Available Tools** - Show all discovered tools
+
+## Troubleshooting
+
+### Common Issues
+
+#### Extension Won't Activate
+
+1. Check VSCode version (requires 1.95.0+)
+2. Ensure all dependencies are installed
+3. Check the Output panel for error messages
+4. Try reloading the window (`Ctrl+Shift+P` → "Developer: Reload Window")
+
+#### MCP Server Connection Issues
+
+1. **Check server command**:
+   - Verify the command and arguments are correct
+   - Test running the command manually in terminal
+   - Ensure the server executable is available
+
+2. **Environment variables**:
+   - Verify required environment variables are set
+   - Check that paths and URLs are correct
+   - Ensure databases/services are running
+
+3. **Permissions**:
+   - Check file/directory permissions
+   - Verify network connectivity
+   - Ensure database user has proper permissions
+
+#### No Tools Available
+
+1. **Check server status**:
+   - Use `@toolsAgent servers` to see connected servers
+   - Verify servers are running and responding
+   - Check server logs for error messages
+
+2. **Configuration validation**:
+   - Ensure server configurations are valid
+   - Check JSON syntax in settings
+   - Verify server compatibility with MCP protocol
+
+#### Chat Participant Not Responding
+
+1. **Check participant registration**:
+   - Verify extension is activated
+   - Try restarting VSCode
+   - Check for conflicting extensions
+
+2. **Tool execution issues**:
+   - Verify MCP servers are responding
+   - Check for network connectivity issues
+   - Review error messages in the chat
+
+### Getting Help
+
+If you encounter issues:
+
+1. **Check the Output panel** for detailed error messages
+2. **Review server logs** for MCP server-specific issues
+3. **Verify configuration** using the command palette tools
+4. **Test with default configuration** to isolate issues
+
+### Debug Mode
+
+For detailed troubleshooting:
+
+1. Open Developer Tools (`Help` → `Toggle Developer Tools`)
+2. Check the Console for error messages
+3. Enable verbose logging in extension settings
+4. Review the Extension Host log for detailed information
+
+## Examples and Use Cases
+
+### Database Operations
+
+```
+@toolsAgent show me all tables in the database
+@toolsAgent describe the users table structure
+@toolsAgent find all users created in the last week
+@toolsAgent analyze the most common user status values
 ```
 
-### Packaging
+### File System Operations
 
-```bash
-npm run package
+```
+@toolsAgent list all JavaScript files in the project
+@toolsAgent find files containing "TODO"
+@toolsAgent show me the directory structure
+@toolsAgent analyze file sizes in the project
 ```
 
-## Contributing
+### Git Operations
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and ensure compilation succeeds
-5. Submit a pull request
+```
+@toolsAgent show me recent commits
+@toolsAgent what branches are available?
+@toolsAgent show me uncommitted changes
+@toolsAgent who made the most commits this month?
+```
+
+### Mixed Domain Queries
+
+```
+@toolsAgent help me analyze the database schema and create documentation
+@toolsAgent find all config files and check their git history
+@toolsAgent search for SQL queries in the codebase and validate them
+```
+
+## Advanced Configuration
+
+### Custom MCP Servers
+
+You can create custom MCP servers by:
+
+1. Implementing the MCP protocol
+2. Adding the server to your configuration
+3. Defining appropriate categories and capabilities
+
+### Environment-Specific Configuration
+
+Configure different servers for different environments:
+
+```json
+{
+  "toolsBridger.mcpServers": [
+    {
+      "id": "dev-postgres",
+      "label": "Development Database",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+      }
+    },
+    {
+      "id": "staging-postgres",
+      "label": "Staging Database",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://staging-server/myapp_staging"
+      }
+    }
+  ]
+}
+```
+
+### Performance Optimization
+
+For better performance:
+
+1. Use local servers when possible
+2. Configure appropriate timeout values
+3. Limit server discovery to needed domains
+4. Use caching for frequently accessed data
+
+## Security Considerations
+
+1. **Server Commands**: Only configure trusted MCP servers
+2. **Environment Variables**: Be careful with sensitive data in configuration
+3. **Network Access**: Ensure servers only access intended resources
+4. **Input Validation**: The extension validates inputs, but use trusted servers
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License - see LICENSE file for details
+
+## Contributing
+
+For technical details, architecture information, and contribution guidelines, see [TECHNICAL-DOCUMENTATION.md](TECHNICAL-DOCUMENTATION.md).
+
+## Support
+
+For issues and feature requests, please use the GitHub issue tracker.
+
+---
+
+*Transform your VSCode experience with intelligent, adaptive tooling that grows with your needs!*
