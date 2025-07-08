@@ -184,6 +184,51 @@ export function registerDatabaseToolsParticipant(context: vscode.ExtensionContex
                     toolCalls
                 });
 
+                // Create assistant message with tool calls
+                const assistantContent: (vscode.LanguageModelTextPart | vscode.LanguageModelToolCallPart)[] = [];
+                if (responseStr) {
+                    assistantContent.push(new vscode.LanguageModelTextPart(responseStr));
+                }
+                assistantContent.push(...toolCalls);
+                messages.push(vscode.LanguageModelChatMessage.Assistant(assistantContent));
+
+                // Execute each tool call and add results to messages
+                const toolResults: vscode.LanguageModelToolResultPart[] = [];
+                
+                for (const toolCall of toolCalls) {
+                    try {
+                        // Execute the tool
+                        const toolResult = await vscode.lm.invokeTool(toolCall.name, {
+                            toolInvocationToken: request.toolInvocationToken,
+                            input: toolCall.input
+                        }, token);
+                        toolResults.push(new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content));
+                        
+                        // Store result for metadata
+                        accumulatedToolResults[toolCall.callId] = toolResult;
+                        
+                        // Stream the tool result to the user
+                        if (toolResult.content) {
+                            for (const content of toolResult.content) {
+                                if (content instanceof vscode.LanguageModelTextPart) {
+                                    stream.markdown(`\n**${toolCall.name}:**\n\`\`\`\n${content.value}\n\`\`\`\n`);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                        stream.markdown(`\n❌ **Error executing ${toolCall.name}:** ${errorMessage}\n`);
+                        console.error(`Error executing tool ${toolCall.name}:`, error);
+                        
+                        // Create an error result
+                        const errorContent = [new vscode.LanguageModelTextPart(`Error: ${errorMessage}`)];
+                        toolResults.push(new vscode.LanguageModelToolResultPart(toolCall.callId, errorContent));
+                    }
+                }
+
+                // Add tool results as a user message
+                messages.push(vscode.LanguageModelChatMessage.User(toolResults));
+
                 // Continue with tool calling loop
                 return runWithTools();
             }

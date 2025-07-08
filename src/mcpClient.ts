@@ -164,7 +164,15 @@ export class McpClient {
       if (result && result.content && Array.isArray(result.content) && result.content.length > 0) {
         const firstContent = result.content[0];
         if (firstContent.type === 'text') {
-          return firstContent.text as T;
+          try {
+            // Parse the JSON response
+            const parsedResult = JSON.parse(firstContent.text);
+            return parsedResult as T;
+          } catch (parseError) {
+            // If parsing fails, return as is (might be plain text)
+            console.warn(`Failed to parse JSON response for ${toolName}:`, parseError);
+            return firstContent.text as T;
+          }
         }
       }
       

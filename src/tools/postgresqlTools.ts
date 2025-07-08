@@ -72,6 +72,11 @@ export class ListSchemasTool implements vscode.LanguageModelTool<IListSchemasPar
     }
 
     private formatSchemaList(result: ListSchemasResponse): string {
+        if (!result || !result.schemas || !Array.isArray(result.schemas)) {
+            console.warn('Invalid response structure for listSchemas:', result);
+            return 'No schemas found or invalid response structure.';
+        }
+        
         if (result.schemas.length === 0) {
             return 'No schemas found.';
         }
@@ -119,6 +124,11 @@ export class ListTablesTool implements vscode.LanguageModelTool<IListTablesParam
     }
 
     private formatTableList(result: ListTablesResponse, schema: string): string {
+        if (!result || !result.tables || !Array.isArray(result.tables)) {
+            console.warn('Invalid response structure for listTables:', result);
+            return `No tables found in schema "${schema}" or invalid response structure.`;
+        }
+        
         if (result.tables.length === 0) {
             return `No tables found in schema "${schema}".`;
         }
@@ -167,6 +177,11 @@ export class ListColumnsTool implements vscode.LanguageModelTool<IListColumnsPar
     }
 
     private formatColumnList(result: ListColumnsResponse, schema: string, table: string): string {
+        if (!result || !result.columns || !Array.isArray(result.columns)) {
+            console.warn('Invalid response structure for listColumns:', result);
+            return `No columns found in table "${schema}.${table}" or invalid response structure.`;
+        }
+        
         if (result.columns.length === 0) {
             return `No columns found in table "${schema}.${table}".`;
         }
