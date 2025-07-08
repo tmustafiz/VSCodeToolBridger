@@ -7,4 +7,50 @@ vsc-extension-quickstart.md
 **/tsconfig.json
 **/.eslintrc.json
 **/*.map
-**/*.ts 
+**/*.ts
+
+# Development files
+eslint.config.mjs
+.eslintrc.json
+tsconfig.json
+.git/**
+.gitignore
+
+# Documentation and examples
+examples/**
+docs/**
+*.md
+!README.md
+
+# Test files
+test/**
+**/*.test.js
+**/*.spec.js
+
+# Node modules optimization
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/spec/**
+node_modules/**/docs/**
+node_modules/**/doc/**
+node_modules/**/examples/**
+node_modules/**/example/**
+node_modules/**/*.md
+node_modules/**/*.txt
+node_modules/**/LICENSE*
+node_modules/**/CHANGELOG*
+node_modules/**/HISTORY*
+node_modules/**/README*
+node_modules/**/.git/**
+node_modules/**/.github/**
+node_modules/**/.*
+
+# Build artifacts that aren't needed
+node_modules/**/*.ts
+node_modules/**/*.d.ts
+!node_modules/**/*.d.ts
+node_modules/**/*.map
+
+# Logs
+*.log
+npm-debug.log* 

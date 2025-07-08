@@ -4,6 +4,11 @@
   "description": "A VSCode extension that provides Language Model Tools to connect to PostgreSQL MCP servers",
   "version": "0.0.1",
   "publisher": "toolsbridger",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/vscode-tools-bridger.git"
+  },
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -439,12 +444,14 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "20.x",
     "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.0.0",
     "eslint": "^8.57.0",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.0.0"
